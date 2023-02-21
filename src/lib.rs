@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use ark_crypto_primitives::{crh::TwoToOneCRH, CRH as CRHTrait};
-use ark_ff::{BigInteger, PrimeField, ToConstraintField};
+use ark_ff::{BigInteger, PrimeField};
 
 use crate::utils::to_field_elements;
 
@@ -98,9 +98,6 @@ impl<F: PrimeField, P: MiMCParameters> CRHTrait for CRH<F, P> {
         input: &[u8],
     ) -> Result<Self::Output, ark_crypto_primitives::Error> {
         let fields: Vec<F> = to_field_elements(input);
-        for i in &fields {
-            println!("{i}");
-        }
         assert!(
             fields.len() <= P::WIDTH,
             "Invalid input length for width parameter"
