@@ -18,7 +18,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{error::Error, str::FromStr};
 
     use ark_bn254::Fr;
     use ark_crypto_primitives::crh::TwoToOneCRH;
@@ -32,7 +32,7 @@ mod tests {
     };
 
     #[test]
-    fn correct_hash_result_params() {
+    fn correct_hash_result_params() -> Result<(), Box<dyn Error>> {
         let param = MiMC::<Fr, MIMC_220_3_BN254_PARAMS>::new(
             1,
             Fr::zero(),
@@ -41,10 +41,9 @@ mod tests {
 
         let result = <CRH<Fr, MIMC_220_3_BN254_PARAMS> as TwoToOneCRH>::evaluate(
             &param,
-            &to_bytes!(Fr::one()).unwrap(),
-            &to_bytes!(Fr::zero()).unwrap(),
-        )
-        .unwrap();
+            &to_bytes!(Fr::one())?,
+            &to_bytes!(Fr::zero())?,
+        )?;
 
         assert_eq!(
             result,
@@ -53,5 +52,7 @@ mod tests {
             )
             .unwrap()
         );
+
+        Ok(())
     }
 }
