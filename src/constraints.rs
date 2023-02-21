@@ -169,7 +169,7 @@ mod tests {
         let x_r_var = FpVar::new_witness(cs.clone(), || Ok(x_r))?;
         let k_var = FpVar::new_input(cs.clone(), || Ok(mimc.k))?;
 
-        let round_keys = Vec::<FpVar<Fr>>::new_constant(cs.clone(), mimc.round_keys)?;
+        let round_keys = Vec::<FpVar<Fr>>::new_constant(cs, mimc.round_keys)?;
         let mimc_var = MiMCVar::<_, MiMCMock>::new(k_var, round_keys);
         let hashed_var = <CRHGadget<_, MiMCMock> as TwoToOneCRHGadget<CRH<_, _>, _>>::evaluate(
             &mimc_var,

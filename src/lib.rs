@@ -67,7 +67,7 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
 pub struct CRH<F: PrimeField, P: MiMCParameters>(PhantomData<F>, PhantomData<P>);
 
 impl<F: PrimeField, P: MiMCParameters> CRHTrait for CRH<F, P> {
-    const INPUT_SIZE_BITS: usize = <F::BigInt as BigInteger>::NUM_LIMBS * 8 * P::WIDTH as usize * 8;
+    const INPUT_SIZE_BITS: usize = <F::BigInt as BigInteger>::NUM_LIMBS * 8 * P::WIDTH * 8;
 
     type Output = F;
 

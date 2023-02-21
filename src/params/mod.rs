@@ -14,7 +14,7 @@ where
     F::Err: core::fmt::Debug,
 {
     round_keys
-        .into_iter()
+        .iter()
         .map(|e| F::from_str(e).unwrap())
         .collect()
 }
