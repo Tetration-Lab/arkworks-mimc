@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use ark_crypto_primitives::{crh::TwoToOneCRH, CRH as CRHTrait};
 use ark_ff::{BigInteger, PrimeField, ToConstraintField};
 
+#[cfg(feature = "r1cs")]
 pub mod constraints;
 pub mod params;
 

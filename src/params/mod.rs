@@ -2,6 +2,7 @@
 
 use ark_ff::PrimeField;
 
+#[cfg(feature = "mimc_220_3_bn254")]
 pub mod mimc_220_3_bn254;
 
 pub fn round_keys_contants_to_vec<F: PrimeField>(round_keys: &[&str]) -> Vec<F>
