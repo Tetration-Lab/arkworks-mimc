@@ -22,3 +22,4 @@ hex = "0.4.3"
 default = []
 r1cs = ["ark-crypto-primitives/r1cs"]
 mimc_220_3_bn254 = []
+mimc_220_3_bls12_381 = []

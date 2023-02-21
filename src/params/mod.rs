@@ -1,7 +1,11 @@
+//! Round constants are generated from
+//! https://github.com/iden3/circomlibjs/blob/main/src/mimcsponge.js
 #![allow(non_camel_case_types)]
 
 use ark_ff::PrimeField;
 
+#[cfg(feature = "mimc_220_3_bls12_381")]
+pub mod mimc_220_3_bls12_381;
 #[cfg(feature = "mimc_220_3_bn254")]
 pub mod mimc_220_3_bn254;
 

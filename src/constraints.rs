@@ -140,3 +140,9 @@ impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHGadget<CRH<F, P>, F> for CRHGa
         <Self as CRHGadgetTrait<CRH<F, P>, F>>::evaluate(parameters, &chained)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn constraints() {}
+}
