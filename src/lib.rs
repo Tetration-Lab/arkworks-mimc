@@ -49,24 +49,14 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
         for i in 0..P::ROUNDS {
             let t = match i == 0 {
                 true => self.k + x_l,
-                false => self.k + x_l + &self.round_keys[i],
+                false => self.k + x_l + self.round_keys[i],
             };
             let t2 = t.square();
             let t4 = t2.square();
             let t5 = t4 * t;
-            //(x_l, x_r) = match i < P::ROUNDS - 1 {
-            //true => (x_r + t5, x_l),
-            //false => (x_l, x_r + t5),
-            //};
-            let tmp = x_r;
-            match i < P::ROUNDS - 1 {
-                true => {
-                    x_r = x_l;
-                    x_l = tmp + t5;
-                }
-                false => {
-                    x_r = tmp + t5;
-                }
+            (x_l, x_r) = match i < P::ROUNDS - 1 {
+                true => (x_r + t5, x_l),
+                false => (x_l, x_r + t5),
             };
         }
         (x_l, x_r)
@@ -126,8 +116,7 @@ impl<F: PrimeField, P: MiMCParameters> TwoToOneCRH for CRH<F, P> {
         left_input: &[u8],
         right_input: &[u8],
     ) -> Result<Self::Output, ark_crypto_primitives::Error> {
-        assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
-        assert!(right_input.len() * 8 <= Self::RIGHT_INPUT_SIZE_BITS);
+        assert_eq!(left_input.len(), right_input.len());
         let chained: Vec<_> = left_input
             .iter()
             .chain(right_input.iter())
