@@ -12,14 +12,17 @@ use crate::{utils::to_field_elements_r1cs, MiMC, MiMCParameters, CRH};
 
 #[derive(Debug, Clone)]
 pub struct MiMCVar<F: PrimeField, P: MiMCParameters> {
+    num_outputs: usize,
     params: PhantomData<P>,
     k: FpVar<F>,
     round_keys: Vec<FpVar<F>>,
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
-    pub fn new(k: FpVar<F>, round_keys: Vec<FpVar<F>>) -> Self {
+    pub fn new(num_outputs: usize, k: FpVar<F>, round_keys: Vec<FpVar<F>>) -> Self {
+        assert_eq!(round_keys.len(), P::ROUNDS, "Invalid round keys length");
         Self {
+            num_outputs,
             params: PhantomData,
             k,
             round_keys,
@@ -28,15 +31,24 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
-    fn permute(&self, state: Vec<FpVar<F>>) -> FpVar<F> {
-        assert!(state.len() == P::WIDTH, "Invalid state length");
+    fn permute(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
         let mut r = FpVar::zero();
         let mut c = FpVar::zero();
         for s in state.into_iter() {
             r = &r + &s;
             (r, c) = self.feistel(r, c);
         }
-        r
+        let mut outputs = vec![r.clone()];
+        match self.num_outputs {
+            0 | 1 => outputs,
+            _ => {
+                for _ in 1..self.num_outputs {
+                    (r, c) = self.feistel(r.clone(), c);
+                    outputs.push(r.clone());
+                }
+                outputs
+            }
+        }
     }
 
     fn feistel(&self, left: FpVar<F>, right: FpVar<F>) -> (FpVar<F>, FpVar<F>) {
@@ -68,6 +80,7 @@ impl<F: PrimeField, P: MiMCParameters> AllocVar<MiMC<F, P>, F> for MiMCVar<F, P>
         let mimc = f()?.borrow().clone();
         let cs = cs.into().cs();
         Ok(Self {
+            num_outputs: mimc.num_outputs,
             params: PhantomData,
             k: FpVar::new_variable(cs.clone(), || Ok(mimc.k), mode)?,
             round_keys: mimc
@@ -92,11 +105,7 @@ impl<F: PrimeField, P: MiMCParameters> CRHGadgetTrait<CRH<F, P>, F> for CRHGadge
         input: &[ark_r1cs_std::uint8::UInt8<F>],
     ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
         let fields: Vec<FpVar<F>> = to_field_elements_r1cs(input)?;
-        assert!(
-            fields.len() <= P::WIDTH,
-            "Invalid input length for width parameter"
-        );
-        Ok(parameters.permute(fields))
+        Ok(parameters.permute(fields)[0].clone())
     }
 }
 
@@ -148,7 +157,6 @@ mod tests {
 
     impl MiMCParameters for MiMCMock {
         const ROUNDS: usize = 5;
-        const WIDTH: usize = 2;
     }
 
     #[test]
@@ -170,7 +178,7 @@ mod tests {
         let k_var = FpVar::new_input(cs.clone(), || Ok(mimc.k))?;
 
         let round_keys = Vec::<FpVar<Fr>>::new_constant(cs, mimc.round_keys)?;
-        let mimc_var = MiMCVar::<_, MiMCMock>::new(k_var, round_keys);
+        let mimc_var = MiMCVar::<_, MiMCMock>::new(1, k_var, round_keys);
         let hashed_var = <CRHGadget<_, MiMCMock> as TwoToOneCRHGadget<CRH<_, _>, _>>::evaluate(
             &mimc_var,
             &x_l_var.to_bytes()?,

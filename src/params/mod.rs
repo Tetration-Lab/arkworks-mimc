@@ -13,10 +13,7 @@ pub fn round_keys_contants_to_vec<F: PrimeField>(round_keys: &[&str]) -> Vec<F>
 where
     F::Err: core::fmt::Debug,
 {
-    round_keys
-        .iter()
-        .map(|e| F::from_str(e).unwrap())
-        .collect()
+    round_keys.iter().map(|e| F::from_str(e).unwrap()).collect()
 }
 
 #[cfg(test)]
@@ -37,6 +34,7 @@ mod tests {
     #[test]
     fn correct_hash_result_params() {
         let param = MiMC::<Fr, MIMC_220_3_BN254_PARAMS>::new(
+            1,
             Fr::zero(),
             round_keys_contants_to_vec(&MIMC_220_3_BN254_ROUND_KEYS),
         );

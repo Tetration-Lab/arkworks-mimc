@@ -5,8 +5,6 @@ pub struct MIMC_220_3_BLS12_381_PARAMS;
 
 impl MiMCParameters for MIMC_220_3_BLS12_381_PARAMS {
     const ROUNDS: usize = 220;
-
-    const WIDTH: usize = 3;
 }
 
 pub const MIMC_220_3_BLS12_381_ROUND_KEYS: [&str; MIMC_220_3_BLS12_381_PARAMS::ROUNDS] = [
