@@ -3,9 +3,12 @@ use std::marker::PhantomData;
 use ark_crypto_primitives::{crh::TwoToOneCRH, CRH as CRHTrait};
 use ark_ff::{BigInteger, PrimeField, ToConstraintField};
 
+use crate::utils::to_field_elements;
+
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 pub mod params;
+pub mod utils;
 
 pub trait MiMCParameters: Clone + Default {
     const ROUNDS: usize;
@@ -31,47 +34,40 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
 
 impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
     fn permute(&self, state: Vec<F>) -> F {
-        assert!(state.len() == P::WIDTH, "Invalid state length");
-        let mut l_out: F = F::zero();
-        let mut r_out: F = F::zero();
-        for (i, s) in state.iter().enumerate() {
-            let (l, r) = match i == 0 {
-                true => (*s, F::zero()),
-                false => (l_out + s, r_out),
-            };
-            (l_out, r_out) = self.feistel(l, r);
+        let mut r = F::zero();
+        let mut c = F::zero();
+        for s in state.into_iter() {
+            r += s;
+            (r, c) = self.feistel(r, c);
         }
-
-        l_out
+        r
     }
 
     fn feistel(&self, left: F, right: F) -> (F, F) {
         let mut x_l = left;
         let mut x_r = right;
         for i in 0..P::ROUNDS {
-            let t = match i == 0 || i == P::ROUNDS - 1 {
+            let t = match i == 0 {
                 true => self.k + x_l,
-                false => self.k + x_l + &self.round_keys[i - 1],
+                false => self.k + x_l + &self.round_keys[i],
             };
-            let t2 = t * t;
-            let t4 = t2 * t2;
-
-            let temp_x_l = x_l;
-            let temp_x_r = x_r;
-
+            let t2 = t.square();
+            let t4 = t2.square();
+            let t5 = t4 * t;
+            //(x_l, x_r) = match i < P::ROUNDS - 1 {
+            //true => (x_r + t5, x_l),
+            //false => (x_l, x_r + t5),
+            //};
+            let tmp = x_r;
             match i < P::ROUNDS - 1 {
                 true => {
-                    x_l = match i {
-                        0 => temp_x_r,
-                        _ => temp_x_r + (t4 * t),
-                    };
-                    x_r = temp_x_l;
+                    x_r = x_l;
+                    x_l = tmp + t5;
                 }
                 false => {
-                    x_r = temp_x_r + (t4 * t);
-                    x_l = temp_x_l;
+                    x_r = tmp + t5;
                 }
-            }
+            };
         }
         (x_l, x_r)
     }
@@ -101,14 +97,15 @@ impl<F: PrimeField, P: MiMCParameters> CRHTrait for CRH<F, P> {
         parameters: &Self::Parameters,
         input: &[u8],
     ) -> Result<Self::Output, ark_crypto_primitives::Error> {
-        let fields: Vec<F> = input.to_field_elements().unwrap_or_default();
+        let fields: Vec<F> = to_field_elements(input);
+        for i in &fields {
+            println!("{i}");
+        }
         assert!(
             fields.len() <= P::WIDTH,
-            "Invalid input length for width paramete"
+            "Invalid input length for width parameter"
         );
-        let mut buffer = vec![F::zero(); P::WIDTH as usize];
-        buffer.iter_mut().zip(fields).for_each(|(p, v)| *p = v);
-        Ok(parameters.permute(buffer))
+        Ok(parameters.permute(fields))
     }
 }
 
@@ -124,11 +121,7 @@ impl<F: PrimeField, P: MiMCParameters> TwoToOneCRH for CRH<F, P> {
     fn setup<R: ark_std::rand::Rng>(
         r: &mut R,
     ) -> Result<Self::Parameters, ark_crypto_primitives::Error> {
-        Ok(Self::Parameters {
-            params: PhantomData,
-            k: F::rand(r),
-            round_keys: (0..P::ROUNDS).map(|_| F::rand(r)).collect::<Vec<_>>(),
-        })
+        <Self as CRHTrait>::setup(r)
     }
 
     fn evaluate(
@@ -136,14 +129,13 @@ impl<F: PrimeField, P: MiMCParameters> TwoToOneCRH for CRH<F, P> {
         left_input: &[u8],
         right_input: &[u8],
     ) -> Result<Self::Output, ark_crypto_primitives::Error> {
-        assert_eq!(left_input.len(), right_input.len());
         assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+        assert!(right_input.len() * 8 <= Self::RIGHT_INPUT_SIZE_BITS);
         let chained: Vec<_> = left_input
             .iter()
             .chain(right_input.iter())
             .copied()
             .collect();
-
         <Self as CRHTrait>::evaluate(parameters, &chained)
     }
 }

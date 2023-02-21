@@ -5,11 +5,10 @@ use ark_ff::PrimeField;
 use ark_r1cs_std::{
     fields::fp::FpVar,
     prelude::{AllocVar, FieldVar},
-    ToConstraintFieldGadget,
 };
 use ark_std::vec::Vec;
 
-use crate::{MiMC, MiMCParameters, CRH};
+use crate::{utils::to_field_elements_r1cs, MiMC, MiMCParameters, CRH};
 
 #[derive(Debug, Clone)]
 pub struct MiMCVar<F: PrimeField, P: MiMCParameters> {
@@ -31,48 +30,31 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
 impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
     fn permute(&self, state: Vec<FpVar<F>>) -> FpVar<F> {
         assert!(state.len() == P::WIDTH, "Invalid state length");
-        let mut l_out: FpVar<F> = FpVar::<F>::zero();
-        let mut r_out: FpVar<F> = FpVar::<F>::zero();
-        for (i, s) in state.into_iter().enumerate() {
-            let (l, r) = match i == 0 {
-                true => (s, FpVar::zero()),
-                false => (l_out + s, r_out),
-            };
-            (l_out, r_out) = self.feistel(l, r);
+        let mut r = FpVar::<F>::zero();
+        let mut c = FpVar::<F>::zero();
+        for s in state.into_iter() {
+            r = r + s;
+            (r, c) = self.feistel(r, c);
         }
-
-        l_out
+        r
     }
 
     fn feistel(&self, left: FpVar<F>, right: FpVar<F>) -> (FpVar<F>, FpVar<F>) {
         let mut x_l = left;
         let mut x_r = right;
         for i in 0..P::ROUNDS {
-            let t = match i == 0 || i == P::ROUNDS - 1 {
+            let t = match i == 0 {
                 true => &self.k + &x_l,
                 false => &self.k + &x_l + &self.round_keys[i - 1],
             };
             let t2 = &t * &t;
             let t4 = &t2 * &t2;
-
-            let temp_x_l = x_l;
-            let temp_x_r = x_r;
-
-            match i < P::ROUNDS - 1 {
-                true => {
-                    x_l = match i {
-                        0 => temp_x_r,
-                        _ => temp_x_r + (t4 * t),
-                    };
-                    x_r = temp_x_l;
-                }
-                false => {
-                    x_r = temp_x_r + (t4 * t);
-                    x_l = temp_x_l;
-                }
-            }
+            let t5 = &t4 * &t;
+            (x_l, x_r) = match i < P::ROUNDS - 1 {
+                true => (&x_r + &t5, x_l),
+                false => (x_l, &x_r + &t5),
+            };
         }
-
         (x_l, x_r)
     }
 }
@@ -109,14 +91,13 @@ impl<F: PrimeField, P: MiMCParameters> CRHGadgetTrait<CRH<F, P>, F> for CRHGadge
         parameters: &Self::ParametersVar,
         input: &[ark_r1cs_std::uint8::UInt8<F>],
     ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
-        let fields: Vec<FpVar<F>> = input.to_constraint_field()?;
+        let fields: Vec<FpVar<F>> = to_field_elements_r1cs(input)?;
+
         assert!(
             fields.len() <= P::WIDTH,
             "Invalid input length for width paramete"
         );
-        let mut buffer = vec![FpVar::zero(); P::WIDTH as usize];
-        buffer.iter_mut().zip(fields).for_each(|(p, v)| *p = v);
-        Ok(parameters.permute(buffer))
+        Ok(parameters.permute(fields))
     }
 }
 
