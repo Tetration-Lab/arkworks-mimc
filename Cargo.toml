@@ -1,0 +1,19 @@
+[package]
+name = "arkworks-mimc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-ff = { version = "^0.3.0", default-features = false }
+ark-r1cs-std = { version = "^0.3.0", default-features = false }
+ark-std = { version = "^0.3.0", default-features = false }
+ark-relations = { version = "^0.3.0", default-features = false }
+ark-crypto-primitives = { version = "^0.3.0", default-features = false, features = ["r1cs"] }
+
+[dev-dependencies]
+ark-ec = { version = "^0.3.0", default-features = false }
+ark-snark = { version = "^0.3.0", default-features = false }
+ark-groth16 = { version = "^0.3.0", default-features = false, features = ["print-trace"] }
+ark-ed-on-bn254 = { version = "^0.3.0", default-features = false, features = ["r1cs"] }
+ark-bn254 = { version = "^0.3.0", default-features = false, features = ["curve"] }
+hex = "0.4.3"
