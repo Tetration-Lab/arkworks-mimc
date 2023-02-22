@@ -34,7 +34,7 @@ impl MiMCParameters for MyMiMCParams {
 }
 
 // Randomize MiMC key and round keys
-let mimc = <MiMCFeistelCRH<Fr, MiMCMock> as CRHTrait>::setup(rng)?;
+let mimc = <MiMCFeistelCRH<Fr, MyMiMCParams> as CRHTrait>::setup(rng)?;
 // Or initialize with customized key/round keys/outputs
 let custom_mimc = MiMC::new(1, Fr::from(1), mimc.round_keys.clone());
 
