@@ -1,17 +1,18 @@
 use std::marker::PhantomData;
 
-use ark_crypto_primitives::{crh::TwoToOneCRH, CRH as CRHTrait};
-use ark_ff::{FpParameters, PrimeField};
-
-use crate::utils::to_field_elements;
+use ark_ff::PrimeField;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 pub mod params;
 pub mod utils;
 
+pub use traits::*;
+mod traits;
+
 pub trait MiMCParameters: Clone + Default {
     const ROUNDS: usize;
+    const EXPONENT: usize;
 }
 
 #[derive(Debug, Default, Clone)]
@@ -35,7 +36,8 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
-    fn permute(&self, state: Vec<F>) -> Vec<F> {
+    /// MiMC 2n/n x^exp permute
+    pub fn permute_feistel(&self, state: Vec<F>) -> Vec<F> {
         let mut r = F::zero();
         let mut c = F::zero();
         for s in state.into_iter() {
@@ -55,7 +57,7 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
         }
     }
 
-    fn feistel(&self, left: F, right: F) -> (F, F) {
+    pub fn feistel(&self, left: F, right: F) -> (F, F) {
         let mut x_l = left;
         let mut x_r = right;
         for i in 0..P::ROUNDS {
@@ -63,74 +65,46 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
                 true => self.k + x_l,
                 false => self.k + x_l + self.round_keys[i],
             };
-            let t2 = t.square();
-            let t4 = t2.square();
-            let t5 = t4 * t;
+            let mut tn = F::one();
+            (0..P::EXPONENT).for_each(|_| tn *= t);
             (x_l, x_r) = match i < P::ROUNDS - 1 {
-                true => (x_r + t5, x_l),
-                false => (x_l, x_r + t5),
+                true => (x_r + tn, x_l),
+                false => (x_l, x_r + tn),
             };
         }
         (x_l, x_r)
     }
-}
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct CRH<F: PrimeField, P: MiMCParameters>(PhantomData<F>, PhantomData<P>);
-
-impl<F: PrimeField, P: MiMCParameters> CRHTrait for CRH<F, P> {
-    const INPUT_SIZE_BITS: usize = <F::Params as FpParameters>::CAPACITY as usize;
-
-    type Output = F;
-
-    type Parameters = MiMC<F, P>;
-
-    fn setup<R: ark_std::rand::Rng>(
-        r: &mut R,
-    ) -> Result<Self::Parameters, ark_crypto_primitives::Error> {
-        Ok(Self::Parameters {
-            num_outputs: 1,
-            params: PhantomData,
-            k: F::rand(r),
-            round_keys: (0..P::ROUNDS).map(|_| F::rand(r)).collect::<Vec<_>>(),
-        })
+    /// MiMC n/n x^exp permute
+    pub fn permute_non_feistel(&self, state: Vec<F>) -> Vec<F> {
+        let mut r = self.k;
+        for s in state.into_iter() {
+            r += s + self.non_feistel(s, r);
+        }
+        let mut outputs = vec![r];
+        match self.num_outputs {
+            0 | 1 => outputs,
+            _ => {
+                for _ in 1..self.num_outputs {
+                    r += self.non_feistel(r, r);
+                    outputs.push(r);
+                }
+                outputs
+            }
+        }
     }
 
-    fn evaluate(
-        parameters: &Self::Parameters,
-        input: &[u8],
-    ) -> Result<Self::Output, ark_crypto_primitives::Error> {
-        let fields: Vec<F> = to_field_elements(input);
-        Ok(parameters.permute(fields)[0])
-    }
-}
-
-impl<F: PrimeField, P: MiMCParameters> TwoToOneCRH for CRH<F, P> {
-    const LEFT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS;
-
-    const RIGHT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS;
-
-    type Output = F;
-
-    type Parameters = MiMC<F, P>;
-
-    fn setup<R: ark_std::rand::Rng>(
-        r: &mut R,
-    ) -> Result<Self::Parameters, ark_crypto_primitives::Error> {
-        <Self as CRHTrait>::setup(r)
-    }
-
-    fn evaluate(
-        parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
-    ) -> Result<Self::Output, ark_crypto_primitives::Error> {
-        assert_eq!(left_input.len(), right_input.len());
-        let chained: Vec<_> = left_input
-            .iter()
-            .chain(right_input.iter())
-            .copied()
-            .collect();
-        <Self as CRHTrait>::evaluate(parameters, &chained)
+    fn non_feistel(&self, x: F, k: F) -> F {
+        let mut r = F::zero();
+        for i in 0..P::ROUNDS {
+            let t = match i == 0 {
+                true => k + x,
+                false => k + r + self.round_keys[i],
+            };
+            let mut tn = F::one();
+            (0..P::EXPONENT).for_each(|_| tn *= t);
+            r = tn;
+        }
+        r + k
     }
 }

@@ -8,7 +8,7 @@ use ark_r1cs_std::{
 };
 use ark_std::vec::Vec;
 
-use crate::{utils::to_field_elements_r1cs, MiMC, MiMCParameters, CRH};
+use crate::{traits::MiMCFeistelCRH, utils::to_field_elements_r1cs, MiMC, MiMCParameters};
 
 #[derive(Debug, Clone)]
 pub struct MiMCVar<F: PrimeField, P: MiMCParameters> {
@@ -95,7 +95,7 @@ impl<F: PrimeField, P: MiMCParameters> AllocVar<MiMC<F, P>, F> for MiMCVar<F, P>
 #[derive(Debug, Clone, Copy)]
 pub struct CRHGadget<F: PrimeField, P: MiMCParameters>(PhantomData<F>, PhantomData<P>);
 
-impl<F: PrimeField, P: MiMCParameters> CRHGadgetTrait<CRH<F, P>, F> for CRHGadget<F, P> {
+impl<F: PrimeField, P: MiMCParameters> CRHGadgetTrait<MiMCFeistelCRH<F, P>, F> for CRHGadget<F, P> {
     type OutputVar = FpVar<F>;
 
     type ParametersVar = MiMCVar<F, P>;
@@ -109,7 +109,9 @@ impl<F: PrimeField, P: MiMCParameters> CRHGadgetTrait<CRH<F, P>, F> for CRHGadge
     }
 }
 
-impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHGadget<CRH<F, P>, F> for CRHGadget<F, P> {
+impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHGadget<MiMCFeistelCRH<F, P>, F>
+    for CRHGadget<F, P>
+{
     type OutputVar = FpVar<F>;
 
     type ParametersVar = MiMCVar<F, P>;
@@ -126,7 +128,7 @@ impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHGadget<CRH<F, P>, F> for CRHGa
             .cloned()
             .collect();
 
-        <Self as CRHGadgetTrait<CRH<F, P>, F>>::evaluate(parameters, &chained)
+        <Self as CRHGadgetTrait<MiMCFeistelCRH<F, P>, F>>::evaluate(parameters, &chained)
     }
 }
 
@@ -148,7 +150,7 @@ mod tests {
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::test_rng;
 
-    use crate::{MiMCParameters, CRH};
+    use crate::{MiMCFeistelCRH, MiMCParameters};
 
     use super::{CRHGadget, MiMCVar};
 
@@ -157,17 +159,18 @@ mod tests {
 
     impl MiMCParameters for MiMCMock {
         const ROUNDS: usize = 5;
+        const EXPONENT: usize = 5;
     }
 
     #[test]
     fn constraints() -> Result<(), Box<dyn Error>> {
         let rng = &mut test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
-        let mimc = <CRH<Fr, MiMCMock> as CRHTrait>::setup(rng)?;
+        let mimc = <MiMCFeistelCRH<Fr, MiMCMock> as CRHTrait>::setup(rng)?;
 
         let x_l = Fr::from(20);
         let x_r = Fr::from(200);
-        let hashed = <CRH<Fr, MiMCMock> as TwoToOneCRH>::evaluate(
+        let hashed = <MiMCFeistelCRH<Fr, MiMCMock> as TwoToOneCRH>::evaluate(
             &mimc,
             &to_bytes!(x_l)?,
             &to_bytes!(x_r)?,
@@ -179,11 +182,12 @@ mod tests {
 
         let round_keys = Vec::<FpVar<Fr>>::new_constant(cs, mimc.round_keys)?;
         let mimc_var = MiMCVar::<_, MiMCMock>::new(1, k_var, round_keys);
-        let hashed_var = <CRHGadget<_, MiMCMock> as TwoToOneCRHGadget<CRH<_, _>, _>>::evaluate(
-            &mimc_var,
-            &x_l_var.to_bytes()?,
-            &x_r_var.to_bytes()?,
-        )?;
+        let hashed_var =
+            <CRHGadget<_, MiMCMock> as TwoToOneCRHGadget<MiMCFeistelCRH<_, _>, _>>::evaluate(
+                &mimc_var,
+                &x_l_var.to_bytes()?,
+                &x_r_var.to_bytes()?,
+            )?;
 
         assert!(FpVar::constant(hashed).is_eq(&hashed_var)?.value()?);
 

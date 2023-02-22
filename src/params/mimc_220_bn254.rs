@@ -5,6 +5,7 @@ pub struct MIMC_220_3_BN254_PARAMS;
 
 impl MiMCParameters for MIMC_220_3_BN254_PARAMS {
     const ROUNDS: usize = 220;
+    const EXPONENT: usize = 5;
 }
 
 pub const MIMC_220_3_BN254_ROUND_KEYS: [&str; MIMC_220_3_BN254_PARAMS::ROUNDS] = [

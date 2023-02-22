@@ -24,7 +24,7 @@ mod tests {
     use ark_crypto_primitives::crh::TwoToOneCRH;
     use ark_ff::{to_bytes, One, Zero};
 
-    use crate::{MiMC, CRH};
+    use crate::{MiMC, MiMCFeistelCRH};
 
     use super::{
         mimc_220_bn254::{MIMC_220_3_BN254_PARAMS, MIMC_220_3_BN254_ROUND_KEYS},
@@ -39,7 +39,7 @@ mod tests {
             round_keys_contants_to_vec(&MIMC_220_3_BN254_ROUND_KEYS),
         );
 
-        let result = <CRH<Fr, MIMC_220_3_BN254_PARAMS> as TwoToOneCRH>::evaluate(
+        let result = <MiMCFeistelCRH<Fr, MIMC_220_3_BN254_PARAMS> as TwoToOneCRH>::evaluate(
             &param,
             &to_bytes!(Fr::one())?,
             &to_bytes!(Fr::zero())?,
