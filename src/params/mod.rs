@@ -4,10 +4,10 @@
 
 use ark_ff::PrimeField;
 
-#[cfg(feature = "mimc_220_3_bls12_381")]
-pub mod mimc_220_3_bls12_381;
-#[cfg(feature = "mimc_220_3_bn254")]
-pub mod mimc_220_3_bn254;
+#[cfg(feature = "mimc_220_bls12_381")]
+pub mod mimc_220_bls12_381;
+#[cfg(feature = "mimc_220_bn254")]
+pub mod mimc_220_bn254;
 
 pub fn round_keys_contants_to_vec<F: PrimeField>(round_keys: &[&str]) -> Vec<F>
 where
@@ -27,7 +27,7 @@ mod tests {
     use crate::{MiMC, CRH};
 
     use super::{
-        mimc_220_3_bn254::{MIMC_220_3_BN254_PARAMS, MIMC_220_3_BN254_ROUND_KEYS},
+        mimc_220_bn254::{MIMC_220_3_BN254_PARAMS, MIMC_220_3_BN254_ROUND_KEYS},
         round_keys_contants_to_vec,
     };
 

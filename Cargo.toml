@@ -21,5 +21,5 @@ hex = "0.4.3"
 [features]
 default = []
 r1cs = ["ark-crypto-primitives/r1cs"]
-mimc_220_3_bn254 = []
-mimc_220_3_bls12_381 = []
+mimc_220_bn254 = []
+mimc_220_bls12_381 = []
