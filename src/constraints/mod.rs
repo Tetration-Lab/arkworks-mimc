@@ -67,6 +67,38 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
         }
         (x_l, x_r)
     }
+
+    fn permute_non_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
+        let mut r = self.k.clone();
+        for s in state.into_iter() {
+            r = &r + &s + &self.non_feistel(&s, &r);
+        }
+        let mut outputs = vec![r.clone()];
+        match self.num_outputs {
+            0 | 1 => outputs,
+            _ => {
+                for _ in 1..self.num_outputs {
+                    r = &r + &self.non_feistel(&r, &r);
+                    outputs.push(r.clone());
+                }
+                outputs
+            }
+        }
+    }
+
+    fn non_feistel(&self, x: &FpVar<F>, k: &FpVar<F>) -> FpVar<F> {
+        let mut r = FpVar::zero();
+        for i in 0..P::ROUNDS {
+            let t = match i == 0 {
+                true => k + x,
+                false => k + r + &self.round_keys[i],
+            };
+            let mut tn = FpVar::one();
+            (0..P::EXPONENT).for_each(|_| tn = &tn * &t);
+            r = tn;
+        }
+        r
+    }
 }
 
 #[cfg(test)]
