@@ -57,7 +57,7 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
         }
     }
 
-    pub fn feistel(&self, left: F, right: F) -> (F, F) {
+    fn feistel(&self, left: F, right: F) -> (F, F) {
         let mut x_l = left;
         let mut x_r = right;
         for i in 0..P::ROUNDS {

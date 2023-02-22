@@ -30,7 +30,7 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
-    fn permute_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
+    pub fn permute_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
         let mut r = FpVar::zero();
         let mut c = FpVar::zero();
         for s in state.into_iter() {
@@ -68,7 +68,7 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
         (x_l, x_r)
     }
 
-    fn permute_non_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
+    pub fn permute_non_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
         let mut r = self.k.clone();
         for s in state.into_iter() {
             r = &r + &s + &self.non_feistel(&s, &r);
