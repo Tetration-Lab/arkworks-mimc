@@ -8,6 +8,10 @@ use ark_ff::PrimeField;
 pub mod mimc_220_bls12_381;
 #[cfg(feature = "mimc_220_bn254")]
 pub mod mimc_220_bn254;
+#[cfg(feature = "mimc_91_bls12_381")]
+pub mod mimc_91_bls12_381;
+#[cfg(feature = "mimc_91_bn254")]
+pub mod mimc_91_bn254;
 
 pub fn round_keys_contants_to_vec<F: PrimeField>(round_keys: &[&str]) -> Vec<F>
 where
@@ -24,22 +28,25 @@ mod tests {
     use ark_crypto_primitives::crh::TwoToOneCRH;
     use ark_ff::{to_bytes, One, Zero};
 
-    use crate::{MiMC, MiMCFeistelCRH};
+    use crate::{
+        params::mimc_91_bn254::MIMC_91_BN254_ROUND_KEYS, MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH,
+    };
 
     use super::{
-        mimc_220_bn254::{MIMC_220_3_BN254_PARAMS, MIMC_220_3_BN254_ROUND_KEYS},
+        mimc_220_bn254::{MIMC_220_BN254_PARAMS, MIMC_220_BN254_ROUND_KEYS},
+        mimc_91_bn254::MIMC_91_BN254_PARAMS,
         round_keys_contants_to_vec,
     };
 
     #[test]
-    fn correct_hash_result_params() -> Result<(), Box<dyn Error>> {
-        let param = MiMC::<Fr, MIMC_220_3_BN254_PARAMS>::new(
+    fn correct_hash_result_params_feistel() -> Result<(), Box<dyn Error>> {
+        let param = MiMC::<Fr, MIMC_220_BN254_PARAMS>::new(
             1,
             Fr::zero(),
-            round_keys_contants_to_vec(&MIMC_220_3_BN254_ROUND_KEYS),
+            round_keys_contants_to_vec(&MIMC_220_BN254_ROUND_KEYS),
         );
 
-        let result = <MiMCFeistelCRH<Fr, MIMC_220_3_BN254_PARAMS> as TwoToOneCRH>::evaluate(
+        let result = <MiMCFeistelCRH<Fr, MIMC_220_BN254_PARAMS> as TwoToOneCRH>::evaluate(
             &param,
             &to_bytes!(Fr::one())?,
             &to_bytes!(Fr::zero())?,
@@ -49,6 +56,33 @@ mod tests {
             result,
             Fr::from_str(
                 "13403990812567987967336759851318987973794445269548215402779394294754792373527"
+            )
+            .unwrap()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn correct_hash_result_params_non_feistel() -> Result<(), Box<dyn Error>> {
+        let param = MiMC::<Fr, MIMC_91_BN254_PARAMS>::new(
+            1,
+            Fr::zero(),
+            round_keys_contants_to_vec(&MIMC_91_BN254_ROUND_KEYS),
+        );
+
+        let result = <MiMCNonFeistelCRH<Fr, MIMC_91_BN254_PARAMS> as TwoToOneCRH>::evaluate(
+            &param,
+            &to_bytes!(Fr::one())?,
+            &to_bytes!(Fr::zero())?,
+        )?;
+
+        println!("{result}");
+
+        assert_eq!(
+            result,
+            Fr::from_str(
+                "21581643069407877618298966131175370729897531221281133974758693417099906058024"
             )
             .unwrap()
         );
