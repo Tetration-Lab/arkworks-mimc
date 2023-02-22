@@ -1,14 +1,13 @@
 use std::marker::PhantomData;
 
-use ark_crypto_primitives::{crh::TwoToOneCRHGadget, CRHGadget as CRHGadgetTrait};
 use ark_ff::PrimeField;
-use ark_r1cs_std::{
-    fields::fp::FpVar,
-    prelude::{AllocVar, FieldVar},
-};
+use ark_r1cs_std::{fields::fp::FpVar, prelude::FieldVar};
 use ark_std::vec::Vec;
 
-use crate::{traits::MiMCFeistelCRH, utils::to_field_elements_r1cs, MiMC, MiMCParameters};
+use crate::MiMCParameters;
+
+mod traits;
+pub use traits::*;
 
 #[derive(Debug, Clone)]
 pub struct MiMCVar<F: PrimeField, P: MiMCParameters> {
@@ -31,7 +30,7 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
-    fn permute(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
+    fn permute_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
         let mut r = FpVar::zero();
         let mut c = FpVar::zero();
         for s in state.into_iter() {
@@ -59,76 +58,14 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
                 true => &self.k + &x_l,
                 false => &self.k + &x_l + &self.round_keys[i],
             };
-            let t2 = &t * &t;
-            let t4 = &t2 * &t2;
-            let t5 = &t4 * &t;
+            let mut tn = FpVar::one();
+            (0..P::EXPONENT).for_each(|_| tn = &tn * &t);
             (x_l, x_r) = match i < P::ROUNDS - 1 {
-                true => (&x_r + &t5, x_l),
-                false => (x_l, &x_r + &t5),
+                true => (&x_r + &tn, x_l),
+                false => (x_l, &x_r + &tn),
             };
         }
         (x_l, x_r)
-    }
-}
-
-impl<F: PrimeField, P: MiMCParameters> AllocVar<MiMC<F, P>, F> for MiMCVar<F, P> {
-    fn new_variable<T: std::borrow::Borrow<MiMC<F, P>>>(
-        cs: impl Into<ark_relations::r1cs::Namespace<F>>,
-        f: impl FnOnce() -> Result<T, ark_relations::r1cs::SynthesisError>,
-        mode: ark_r1cs_std::prelude::AllocationMode,
-    ) -> Result<Self, ark_relations::r1cs::SynthesisError> {
-        let mimc = f()?.borrow().clone();
-        let cs = cs.into().cs();
-        Ok(Self {
-            num_outputs: mimc.num_outputs,
-            params: PhantomData,
-            k: FpVar::new_variable(cs.clone(), || Ok(mimc.k), mode)?,
-            round_keys: mimc
-                .round_keys
-                .into_iter()
-                .map(|e| -> Result<_, _> { FpVar::new_variable(cs.clone(), || Ok(e), mode) })
-                .collect::<Result<Vec<_>, _>>()?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct CRHGadget<F: PrimeField, P: MiMCParameters>(PhantomData<F>, PhantomData<P>);
-
-impl<F: PrimeField, P: MiMCParameters> CRHGadgetTrait<MiMCFeistelCRH<F, P>, F> for CRHGadget<F, P> {
-    type OutputVar = FpVar<F>;
-
-    type ParametersVar = MiMCVar<F, P>;
-
-    fn evaluate(
-        parameters: &Self::ParametersVar,
-        input: &[ark_r1cs_std::uint8::UInt8<F>],
-    ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
-        let fields: Vec<FpVar<F>> = to_field_elements_r1cs(input)?;
-        Ok(parameters.permute(fields)[0].clone())
-    }
-}
-
-impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHGadget<MiMCFeistelCRH<F, P>, F>
-    for CRHGadget<F, P>
-{
-    type OutputVar = FpVar<F>;
-
-    type ParametersVar = MiMCVar<F, P>;
-
-    fn evaluate(
-        parameters: &Self::ParametersVar,
-        left_input: &[ark_r1cs_std::uint8::UInt8<F>],
-        right_input: &[ark_r1cs_std::uint8::UInt8<F>],
-    ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
-        assert_eq!(left_input.len(), right_input.len());
-        let chained: Vec<_> = left_input
-            .iter()
-            .chain(right_input.iter())
-            .cloned()
-            .collect();
-
-        <Self as CRHGadgetTrait<MiMCFeistelCRH<F, P>, F>>::evaluate(parameters, &chained)
     }
 }
 
@@ -150,9 +87,9 @@ mod tests {
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::test_rng;
 
-    use crate::{MiMCFeistelCRH, MiMCParameters};
+    use crate::{constraints::MiMCFeistelCRHGadget, MiMCFeistelCRH, MiMCParameters};
 
-    use super::{CRHGadget, MiMCVar};
+    use super::MiMCVar;
 
     #[derive(Clone, Default)]
     struct MiMCMock;
@@ -182,12 +119,12 @@ mod tests {
 
         let round_keys = Vec::<FpVar<Fr>>::new_constant(cs, mimc.round_keys)?;
         let mimc_var = MiMCVar::<_, MiMCMock>::new(1, k_var, round_keys);
-        let hashed_var =
-            <CRHGadget<_, MiMCMock> as TwoToOneCRHGadget<MiMCFeistelCRH<_, _>, _>>::evaluate(
-                &mimc_var,
-                &x_l_var.to_bytes()?,
-                &x_r_var.to_bytes()?,
-            )?;
+        let hashed_var = <MiMCFeistelCRHGadget<_, MiMCMock> as TwoToOneCRHGadget<
+            MiMCFeistelCRH<_, _>,
+            _,
+        >>::evaluate(
+            &mimc_var, &x_l_var.to_bytes()?, &x_r_var.to_bytes()?
+        )?;
 
         assert!(FpVar::constant(hashed).is_eq(&hashed_var)?.value()?);
 
