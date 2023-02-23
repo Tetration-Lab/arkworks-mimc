@@ -4,10 +4,14 @@
 
 use ark_ff::PrimeField;
 
+#[cfg(feature = "mimc_218_bls12_377")]
+pub mod mimc_218_bls12_377;
 #[cfg(feature = "mimc_220_bls12_381")]
 pub mod mimc_220_bls12_381;
 #[cfg(feature = "mimc_220_bn254")]
 pub mod mimc_220_bn254;
+#[cfg(feature = "mimc_90_bls12_377")]
+pub mod mimc_90_bls12_377;
 #[cfg(feature = "mimc_91_bls12_381")]
 pub mod mimc_91_bls12_381;
 #[cfg(feature = "mimc_91_bn254")]
