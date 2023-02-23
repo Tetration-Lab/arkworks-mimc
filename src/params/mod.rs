@@ -25,8 +25,8 @@ mod tests {
     use std::{error::Error, str::FromStr};
 
     use ark_bn254::Fr;
-    use ark_crypto_primitives::crh::TwoToOneCRH;
-    use ark_ff::{to_bytes, One, Zero};
+    use ark_crypto_primitives::crh::TwoToOneCRHScheme;
+    use ark_ff::Zero;
 
     use crate::{
         params::mimc_91_bn254::MIMC_91_BN254_ROUND_KEYS, MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH,
@@ -46,10 +46,10 @@ mod tests {
             round_keys_contants_to_vec(&MIMC_220_BN254_ROUND_KEYS),
         );
 
-        let result = <MiMCFeistelCRH<Fr, MIMC_220_BN254_PARAMS> as TwoToOneCRH>::evaluate(
+        let result = <MiMCFeistelCRH<Fr, MIMC_220_BN254_PARAMS> as TwoToOneCRHScheme>::evaluate(
             &param,
-            &to_bytes!(Fr::one())?,
-            &to_bytes!(Fr::zero())?,
+            &Fr::from(1),
+            &Fr::from(0),
         )?;
 
         assert_eq!(
@@ -71,10 +71,10 @@ mod tests {
             round_keys_contants_to_vec(&MIMC_91_BN254_ROUND_KEYS),
         );
 
-        let result = <MiMCNonFeistelCRH<Fr, MIMC_91_BN254_PARAMS> as TwoToOneCRH>::evaluate(
+        let result = <MiMCNonFeistelCRH<Fr, MIMC_91_BN254_PARAMS> as TwoToOneCRHScheme>::evaluate(
             &param,
-            &to_bytes!(Fr::one())?,
-            &to_bytes!(Fr::zero())?,
+            &Fr::from(1),
+            &Fr::from(0),
         )?;
 
         println!("{result}");

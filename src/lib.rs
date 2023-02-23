@@ -5,7 +5,6 @@ use ark_ff::PrimeField;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 pub mod params;
-pub mod utils;
 
 pub use traits::*;
 mod traits;
@@ -37,10 +36,10 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
 
 impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
     /// MiMC 2n/n x^exp permute
-    pub fn permute_feistel(&self, state: Vec<F>) -> Vec<F> {
+    pub fn permute_feistel(&self, state: &[F]) -> Vec<F> {
         let mut r = F::zero();
         let mut c = F::zero();
-        for s in state.into_iter() {
+        for s in state.iter() {
             r += s;
             (r, c) = self.feistel(r, c);
         }
@@ -76,10 +75,10 @@ impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {
     }
 
     /// MiMC n/n x^exp permute
-    pub fn permute_non_feistel(&self, state: Vec<F>) -> Vec<F> {
+    pub fn permute_non_feistel(&self, state: &[F]) -> Vec<F> {
         let mut r = self.k;
-        for s in state.into_iter() {
-            r += s + self.non_feistel(s, r);
+        for s in state.iter() {
+            r += *s + self.non_feistel(*s, r);
         }
         let mut outputs = vec![r];
         match self.num_outputs {
