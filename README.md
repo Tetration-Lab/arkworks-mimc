@@ -12,11 +12,13 @@ We provide pre-generated round keys for some selected prime fields which availab
 
 - 220 rounds with $x^5$ on BN254
 - 220 rounds with $x^5$ on BLS12-381
+- 218 rounds with $x^5$ on BLS12-377
 
 ### Non-Feistel ($n/n$)
 
 - 91 rounds with $x^7$ on BN254
 - 91 rounds with $x^7$ on BLS12-381
+- 90 rounds with $x^7$ on BLS12-377
 
 ## Usage
 
