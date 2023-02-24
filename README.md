@@ -65,16 +65,16 @@ Enable specific feature containing parameter that will be used.
 
 In `cargo.toml`
 
-```yaml
-arkworks-mimc = { ..., features = ["mimc_91_bn254"] }
+```toml
+arkworks-mimc = { ..., features = ["mimc-7-91-bn254"] }
 ```
 
 In `.rs`
 
 ```rust
-let mimc = MiMC::<Fr, MIMC_91_BN254_PARAMS>::new(
+let mimc = MiMC::<Fr, MIMC_7_91_BN254_PARAMS>::new(
     1,
     Fr::zero(),
-    round_keys_contants_to_vec(&MIMC_91_BN254_ROUND_KEYS),
+    round_keys_contants_to_vec(&MIMC_7_91_BN254_ROUND_KEYS),
 );
 ```

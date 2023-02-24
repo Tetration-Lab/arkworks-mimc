@@ -4,18 +4,18 @@
 
 use ark_ff::PrimeField;
 
-#[cfg(feature = "mimc_218_bls12_377")]
-pub mod mimc_218_bls12_377;
-#[cfg(feature = "mimc_220_bls12_381")]
-pub mod mimc_220_bls12_381;
-#[cfg(feature = "mimc_220_bn254")]
-pub mod mimc_220_bn254;
-#[cfg(feature = "mimc_90_bls12_377")]
-pub mod mimc_90_bls12_377;
-#[cfg(feature = "mimc_91_bls12_381")]
-pub mod mimc_91_bls12_381;
-#[cfg(feature = "mimc_91_bn254")]
-pub mod mimc_91_bn254;
+#[cfg(feature = "mimc-5-218-bls12-377")]
+pub mod mimc_5_218_bls12_377;
+#[cfg(feature = "mimc-5-220-bls12-381")]
+pub mod mimc_5_220_bls12_381;
+#[cfg(feature = "mimc-5-220-bn254")]
+pub mod mimc_5_220_bn254;
+#[cfg(feature = "mimc-7-90-bls12-377")]
+pub mod mimc_7_90_bls12_377;
+#[cfg(feature = "mimc-7-91-bls12-381")]
+pub mod mimc_7_91_bls12_381;
+#[cfg(feature = "mimc-7-91-bn254")]
+pub mod mimc_7_91_bn254;
 
 pub fn round_keys_contants_to_vec<F: PrimeField>(round_keys: &[&str]) -> Vec<F>
 where
@@ -33,24 +33,23 @@ mod tests {
     use ark_ff::Zero;
 
     use crate::{
-        params::mimc_91_bn254::MIMC_91_BN254_ROUND_KEYS, MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH,
-    };
-
-    use super::{
-        mimc_220_bn254::{MIMC_220_BN254_PARAMS, MIMC_220_BN254_ROUND_KEYS},
-        mimc_91_bn254::MIMC_91_BN254_PARAMS,
-        round_keys_contants_to_vec,
+        params::{
+            mimc_5_220_bn254::{MIMC_5_220_BN254_PARAMS, MIMC_5_220_BN254_ROUND_KEYS},
+            mimc_7_91_bn254::{MIMC_7_91_BN254_PARAMS, MIMC_7_91_BN254_ROUND_KEYS},
+            round_keys_contants_to_vec,
+        },
+        MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH,
     };
 
     #[test]
     fn correct_hash_result_params_feistel() -> Result<(), Box<dyn Error>> {
-        let param = MiMC::<Fr, MIMC_220_BN254_PARAMS>::new(
+        let param = MiMC::<Fr, MIMC_5_220_BN254_PARAMS>::new(
             1,
             Fr::zero(),
-            round_keys_contants_to_vec(&MIMC_220_BN254_ROUND_KEYS),
+            round_keys_contants_to_vec(&MIMC_5_220_BN254_ROUND_KEYS),
         );
 
-        let result = <MiMCFeistelCRH<Fr, MIMC_220_BN254_PARAMS> as TwoToOneCRHScheme>::evaluate(
+        let result = <MiMCFeistelCRH<Fr, MIMC_5_220_BN254_PARAMS> as TwoToOneCRHScheme>::evaluate(
             &param,
             &Fr::from(1),
             &Fr::from(0),
@@ -69,17 +68,18 @@ mod tests {
 
     #[test]
     fn correct_hash_result_params_non_feistel() -> Result<(), Box<dyn Error>> {
-        let param = MiMC::<Fr, MIMC_91_BN254_PARAMS>::new(
+        let param = MiMC::<Fr, MIMC_7_91_BN254_PARAMS>::new(
             1,
             Fr::zero(),
-            round_keys_contants_to_vec(&MIMC_91_BN254_ROUND_KEYS),
+            round_keys_contants_to_vec(&MIMC_7_91_BN254_ROUND_KEYS),
         );
 
-        let result = <MiMCNonFeistelCRH<Fr, MIMC_91_BN254_PARAMS> as TwoToOneCRHScheme>::evaluate(
-            &param,
-            &Fr::from(1),
-            &Fr::from(0),
-        )?;
+        let result =
+            <MiMCNonFeistelCRH<Fr, MIMC_7_91_BN254_PARAMS> as TwoToOneCRHScheme>::evaluate(
+                &param,
+                &Fr::from(1),
+                &Fr::from(0),
+            )?;
 
         println!("{result}");
 

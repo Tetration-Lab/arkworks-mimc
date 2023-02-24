@@ -6,6 +6,9 @@ use ark_ff::PrimeField;
 pub mod constraints;
 pub mod params;
 
+#[cfg(feature = "paramgen")]
+pub mod paramgen;
+
 pub use traits::*;
 mod traits;
 
