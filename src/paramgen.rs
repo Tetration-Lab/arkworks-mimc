@@ -10,7 +10,7 @@ fn hash_keccak(bytes: &[u8]) -> Vec<u8> {
     output
 }
 
-fn round_keys_length<F: PrimeField>(exponent: usize) -> usize {
+fn round_keys_length<F: PrimeField>(permutation_type: PermutationType, exponent: usize) -> usize {
     let mut modulus = Float::new(20);
     modulus
         .assign(Float::parse_radix(<F::Params as FpParameters>::MODULUS.to_string(), 16).unwrap());
@@ -18,7 +18,11 @@ fn round_keys_length<F: PrimeField>(exponent: usize) -> usize {
     div.assign(Float::parse(exponent.to_string()).unwrap());
     modulus.log10_mut();
     div.log10_mut();
-    (modulus / div).ceil().to_u32_saturating().unwrap() as usize
+    let len = (modulus / div).ceil().to_u32_saturating().unwrap() as usize;
+    match permutation_type {
+        PermutationType::Feistel => len * 2,
+        PermutationType::NonFeistel => len,
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -47,7 +51,7 @@ pub fn generate_round_keys<F: PrimeField>(
     exponent: usize,
     seed: &[u8],
 ) -> (usize, Vec<F>) {
-    let round_keys_length = round_keys_length::<F>(exponent);
+    let round_keys_length = round_keys_length::<F>(permutation_type, exponent);
     let mut rounds: Vec<F> = vec![];
     let mut c = hash_keccak(seed);
     rounds.push(F::zero());
@@ -55,7 +59,6 @@ pub fn generate_round_keys<F: PrimeField>(
         c = hash_keccak(&c);
         let f = F::from_be_bytes_mod_order(&c);
         rounds.push(f);
-        println!("\"{}\",", f);
     }
     match permutation_type {
         PermutationType::Feistel => {
