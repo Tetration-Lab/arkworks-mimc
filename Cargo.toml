@@ -12,6 +12,8 @@ ark-r1cs-std = { version = "^0.3.0", default-features = false }
 ark-std = { version = "^0.3.0", default-features = false }
 ark-relations = { version = "^0.3.0", default-features = false }
 ark-crypto-primitives = { version = "^0.3.0", default-features = false }
+tiny-keccak = { version = "^2.0.2", default-features = false, optional = true }
+rug = { version = "1.19.1", default-features = false, optional = true }
 
 [dev-dependencies]
 ark-std = { version = "^0.3.0", default-features = false, features = ["print-trace"] }
@@ -19,6 +21,7 @@ ark-bn254 = { version = "^0.3.0", default-features = false, features = ["curve"]
 
 [features]
 default = []
+paramgen = ["tiny-keccak/keccak", "rug/float"]
 r1cs = ["ark-crypto-primitives/r1cs"]
 mimc-5-220-bn254 = []
 mimc-5-220-bls12-381 = []

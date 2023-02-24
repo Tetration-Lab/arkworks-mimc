@@ -7,6 +7,9 @@ pub mod constraints;
 pub mod params;
 pub mod utils;
 
+#[cfg(feature = "paramgen")]
+pub mod paramgen;
+
 pub use traits::*;
 mod traits;
 
