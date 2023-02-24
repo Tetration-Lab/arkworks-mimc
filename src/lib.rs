@@ -20,10 +20,10 @@ pub trait MiMCParameters: Clone + Default {
 
 #[derive(Debug, Default, Clone)]
 pub struct MiMC<F: PrimeField, P: MiMCParameters> {
-    num_outputs: usize,
+    pub num_outputs: usize,
+    pub k: F,
+    pub round_keys: Vec<F>,
     params: PhantomData<P>,
-    k: F,
-    round_keys: Vec<F>,
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMC<F, P> {

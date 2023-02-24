@@ -11,10 +11,10 @@ pub use traits::*;
 
 #[derive(Debug, Clone)]
 pub struct MiMCVar<F: PrimeField, P: MiMCParameters> {
-    num_outputs: usize,
+    pub num_outputs: usize,
+    pub k: FpVar<F>,
+    pub round_keys: Vec<FpVar<F>>,
     params: PhantomData<P>,
-    k: FpVar<F>,
-    round_keys: Vec<FpVar<F>>,
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
