@@ -32,6 +32,7 @@ pub enum PermutationType {
     NonFeistel,
 }
 
+#[inline]
 pub fn generate_default_round_keys<F: PrimeField>(
     permutation_type: PermutationType,
     exponent: usize,
@@ -53,9 +54,8 @@ pub fn generate_round_keys<F: PrimeField>(
 ) -> (usize, Vec<F>) {
     let round_keys_length = round_keys_length::<F>(permutation_type, exponent);
     let mut rounds: Vec<F> = vec![];
-    let mut c = hash_keccak(seed);
-    rounds.push(F::zero());
-    for _ in 1..round_keys_length {
+    let mut c = seed.to_vec();
+    for _ in 0..round_keys_length {
         c = hash_keccak(&c);
         let f = F::from_be_bytes_mod_order(&c);
         rounds.push(f);
@@ -63,8 +63,11 @@ pub fn generate_round_keys<F: PrimeField>(
     match permutation_type {
         PermutationType::Feistel => {
             rounds[round_keys_length - 1] = F::zero();
+            rounds[0] = F::zero();
         }
-        _ => {}
+        _ => {
+            rounds[0] = F::zero();
+        }
     };
     (round_keys_length, rounds)
 }
