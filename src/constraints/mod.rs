@@ -97,7 +97,7 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
             (0..P::EXPONENT).for_each(|_| tn = &tn * &t);
             r = tn;
         }
-        r
+        r + k
     }
 }
 
@@ -119,7 +119,10 @@ mod tests {
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::test_rng;
 
-    use crate::{constraints::MiMCFeistelCRHGadget, MiMCFeistelCRH, MiMCParameters};
+    use crate::{
+        constraints::{MiMCFeistelCRHGadget, MiMCNonFeistelCRHGadget},
+        MiMCFeistelCRH, MiMCNonFeistelCRH, MiMCParameters,
+    };
 
     use super::MiMCVar;
 
@@ -132,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn constraints() -> Result<(), Box<dyn Error>> {
+    fn constraints_feistel() -> Result<(), Box<dyn Error>> {
         let rng = &mut test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
         let mimc = <MiMCFeistelCRH<Fr, MiMCMock> as CRHTrait>::setup(rng)?;
@@ -157,6 +160,37 @@ mod tests {
         >>::evaluate(
             &mimc_var, &x_l_var.to_bytes()?, &x_r_var.to_bytes()?
         )?;
+
+        assert!(FpVar::constant(hashed).is_eq(&hashed_var)?.value()?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn constraints_non_feistel() -> Result<(), Box<dyn Error>> {
+        let rng = &mut test_rng();
+        let cs = ConstraintSystem::<Fr>::new_ref();
+        let mimc = <MiMCNonFeistelCRH<Fr, MiMCMock> as CRHTrait>::setup(rng)?;
+
+        let x_l = Fr::from(20);
+        let x_r = Fr::from(200);
+        let hashed = <MiMCNonFeistelCRH<Fr, MiMCMock> as TwoToOneCRH>::evaluate(
+            &mimc,
+            &to_bytes!(x_l)?,
+            &to_bytes!(x_r)?,
+        )?;
+
+        let x_l_var = FpVar::new_witness(cs.clone(), || Ok(x_l))?;
+        let x_r_var = FpVar::new_witness(cs.clone(), || Ok(x_r))?;
+        let k_var = FpVar::new_input(cs.clone(), || Ok(mimc.k))?;
+
+        let round_keys = Vec::<FpVar<Fr>>::new_constant(cs, mimc.round_keys)?;
+        let mimc_var = MiMCVar::<_, MiMCMock>::new(1, k_var, round_keys);
+        let hashed_var =
+            <MiMCNonFeistelCRHGadget<_, MiMCMock> as TwoToOneCRHGadget<
+                MiMCNonFeistelCRH<_, _>,
+                _,
+            >>::evaluate(&mimc_var, &x_l_var.to_bytes()?, &x_r_var.to_bytes()?)?;
 
         assert!(FpVar::constant(hashed).is_eq(&hashed_var)?.value()?);
 
