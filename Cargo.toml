@@ -7,17 +7,17 @@ description = "Arkworks implementation of cryptographic hash function MiMC"
 license = "LGPL-3.0-only"
 
 [dependencies]
-ark-ff = { version = "^0.3.0", default-features = false }
-ark-r1cs-std = { version = "^0.3.0", default-features = false }
-ark-std = { version = "^0.3.0", default-features = false }
-ark-relations = { version = "^0.3.0", default-features = false }
-ark-crypto-primitives = { version = "^0.3.0", default-features = false }
+ark-ff = { version = "^0.4.0", default-features = false }
+ark-r1cs-std = { version = "^0.4.0", default-features = false }
+ark-std = { version = "^0.4.0", default-features = false }
+ark-relations = { version = "^0.4.0", default-features = false }
+ark-crypto-primitives = { version = "^0.4.0", default-features = false, features = ["crh"] }
 tiny-keccak = { version = "^2.0.2", default-features = false, optional = true }
 rug = { version = "1.19.1", default-features = false, optional = true }
 
 [dev-dependencies]
-ark-std = { version = "^0.3.0", default-features = false, features = ["print-trace"] }
-ark-bn254 = { version = "^0.3.0", default-features = false, features = ["curve"] }
+ark-std = { version = "^0.4.0", default-features = false, features = ["print-trace"] }
+ark-bn254 = { version = "^0.4.0", default-features = false, features = ["curve"] }
 
 [features]
 default = []

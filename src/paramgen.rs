@@ -1,4 +1,4 @@
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use rug::{Assign, Float};
 use tiny_keccak::{Hasher, Keccak};
 
@@ -12,8 +12,7 @@ fn hash_keccak(bytes: &[u8]) -> Vec<u8> {
 
 fn round_keys_length<F: PrimeField>(permutation_type: PermutationType, exponent: usize) -> usize {
     let mut modulus = Float::new(20);
-    modulus
-        .assign(Float::parse_radix(<F::Params as FpParameters>::MODULUS.to_string(), 16).unwrap());
+    modulus.assign(Float::parse(F::MODULUS.to_string()).unwrap());
     let mut div = Float::new(20);
     div.assign(Float::parse(exponent.to_string()).unwrap());
     modulus.log10_mut();

@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker::PhantomData};
 
 use ark_ff::PrimeField;
 use ark_r1cs_std::{fields::fp::FpVar, prelude::FieldVar};
@@ -30,11 +30,11 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
 }
 
 impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
-    pub fn permute_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
+    pub fn permute_feistel<T: Borrow<FpVar<F>>>(&self, state: &[T]) -> Vec<FpVar<F>> {
         let mut r = FpVar::zero();
         let mut c = FpVar::zero();
-        for s in state.into_iter() {
-            r = &r + &s;
+        for s in state.iter() {
+            r = &r + s.borrow();
             (r, c) = self.feistel(r, c);
         }
         let mut outputs = vec![r.clone()];
@@ -68,10 +68,10 @@ impl<F: PrimeField, P: MiMCParameters> MiMCVar<F, P> {
         (x_l, x_r)
     }
 
-    pub fn permute_non_feistel(&self, state: Vec<FpVar<F>>) -> Vec<FpVar<F>> {
+    pub fn permute_non_feistel<T: Borrow<FpVar<F>>>(&self, state: &[T]) -> Vec<FpVar<F>> {
         let mut r = self.k.clone();
-        for s in state.into_iter() {
-            r = &r + &s + &self.non_feistel(&s, &r);
+        for s in state.iter() {
+            r = &r + s.borrow() + &self.non_feistel(s.borrow(), &r);
         }
         let mut outputs = vec![r.clone()];
         match self.num_outputs {
@@ -106,15 +106,11 @@ mod tests {
     use std::error::Error;
 
     use ark_bn254::Fr;
-    use ark_crypto_primitives::{
-        crh::{TwoToOneCRH, TwoToOneCRHGadget},
-        CRH as CRHTrait,
-    };
-    use ark_ff::to_bytes;
+    use ark_crypto_primitives::crh::{CRHScheme, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
     use ark_r1cs_std::{
         fields::fp::FpVar,
         prelude::{AllocVar, EqGadget, FieldVar},
-        R1CSVar, ToBytesGadget,
+        R1CSVar,
     };
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::test_rng;
@@ -138,15 +134,12 @@ mod tests {
     fn constraints_feistel() -> Result<(), Box<dyn Error>> {
         let rng = &mut test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
-        let mimc = <MiMCFeistelCRH<Fr, MiMCMock> as CRHTrait>::setup(rng)?;
+        let mimc = <MiMCFeistelCRH<Fr, MiMCMock> as CRHScheme>::setup(rng)?;
 
         let x_l = Fr::from(20);
         let x_r = Fr::from(200);
-        let hashed = <MiMCFeistelCRH<Fr, MiMCMock> as TwoToOneCRH>::evaluate(
-            &mimc,
-            &to_bytes!(x_l)?,
-            &to_bytes!(x_r)?,
-        )?;
+        let hashed =
+            <MiMCFeistelCRH<Fr, MiMCMock> as TwoToOneCRHScheme>::evaluate(&mimc, &x_l, &x_r)?;
 
         let x_l_var = FpVar::new_witness(cs.clone(), || Ok(x_l))?;
         let x_r_var = FpVar::new_witness(cs.clone(), || Ok(x_r))?;
@@ -154,12 +147,10 @@ mod tests {
 
         let round_keys = Vec::<FpVar<Fr>>::new_constant(cs, mimc.round_keys)?;
         let mimc_var = MiMCVar::<_, MiMCMock>::new(1, k_var, round_keys);
-        let hashed_var = <MiMCFeistelCRHGadget<_, MiMCMock> as TwoToOneCRHGadget<
+        let hashed_var = <MiMCFeistelCRHGadget<_, MiMCMock> as TwoToOneCRHSchemeGadget<
             MiMCFeistelCRH<_, _>,
             _,
-        >>::evaluate(
-            &mimc_var, &x_l_var.to_bytes()?, &x_r_var.to_bytes()?
-        )?;
+        >>::evaluate(&mimc_var, &x_l_var, &x_r_var)?;
 
         assert!(FpVar::constant(hashed).is_eq(&hashed_var)?.value()?);
 

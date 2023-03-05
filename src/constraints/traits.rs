@@ -1,12 +1,10 @@
 use std::marker::PhantomData;
 
-use ark_crypto_primitives::{crh::TwoToOneCRHGadget, CRHGadget};
+use ark_crypto_primitives::crh::{CRHSchemeGadget, TwoToOneCRHSchemeGadget};
 use ark_ff::PrimeField;
 use ark_r1cs_std::{fields::fp::FpVar, prelude::AllocVar};
 
-use crate::{
-    utils::to_field_elements_r1cs, MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH, MiMCParameters,
-};
+use crate::{MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH, MiMCParameters};
 
 use super::MiMCVar;
 
@@ -40,80 +38,104 @@ impl<F: PrimeField, P: MiMCParameters> AllocVar<MiMC<F, P>, F> for MiMCVar<F, P>
     }
 }
 
-impl<F: PrimeField, P: MiMCParameters> CRHGadget<MiMCFeistelCRH<F, P>, F>
+impl<F: PrimeField, P: MiMCParameters> CRHSchemeGadget<MiMCFeistelCRH<F, P>, F>
     for MiMCFeistelCRHGadget<F, P>
 {
+    type InputVar = [FpVar<F>];
+
     type OutputVar = FpVar<F>;
 
     type ParametersVar = MiMCVar<F, P>;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
-        input: &[ark_r1cs_std::uint8::UInt8<F>],
+        input: &Self::InputVar,
     ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
-        let fields: Vec<FpVar<F>> = to_field_elements_r1cs(input)?;
-        Ok(parameters.permute_feistel(fields)[0].clone())
+        Ok(parameters
+            .permute_feistel(input)
+            .into_iter()
+            .next()
+            .unwrap())
     }
 }
 
-impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHGadget<MiMCFeistelCRH<F, P>, F>
+impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHSchemeGadget<MiMCFeistelCRH<F, P>, F>
     for MiMCFeistelCRHGadget<F, P>
 {
+    type InputVar = FpVar<F>;
+
     type OutputVar = FpVar<F>;
 
     type ParametersVar = MiMCVar<F, P>;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
-        left_input: &[ark_r1cs_std::uint8::UInt8<F>],
-        right_input: &[ark_r1cs_std::uint8::UInt8<F>],
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
     ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
-        assert_eq!(left_input.len(), right_input.len());
-        let chained: Vec<_> = left_input
-            .iter()
-            .chain(right_input.iter())
-            .cloned()
-            .collect();
+        Ok(parameters
+            .permute_feistel(&[left_input, right_input])
+            .into_iter()
+            .next()
+            .unwrap())
+    }
 
-        <Self as CRHGadget<_, _>>::evaluate(parameters, &chained)
+    fn compress(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
+    ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
+        <Self as TwoToOneCRHSchemeGadget<_, _>>::evaluate(parameters, left_input, right_input)
     }
 }
 
-impl<F: PrimeField, P: MiMCParameters> CRHGadget<MiMCNonFeistelCRH<F, P>, F>
+impl<F: PrimeField, P: MiMCParameters> CRHSchemeGadget<MiMCNonFeistelCRH<F, P>, F>
     for MiMCNonFeistelCRHGadget<F, P>
 {
+    type InputVar = [FpVar<F>];
+
     type OutputVar = FpVar<F>;
 
     type ParametersVar = MiMCVar<F, P>;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
-        input: &[ark_r1cs_std::uint8::UInt8<F>],
+        input: &Self::InputVar,
     ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
-        let fields: Vec<FpVar<F>> = to_field_elements_r1cs(input)?;
-        Ok(parameters.permute_non_feistel(fields)[0].clone())
+        Ok(parameters
+            .permute_non_feistel(input)
+            .into_iter()
+            .next()
+            .unwrap())
     }
 }
 
-impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHGadget<MiMCNonFeistelCRH<F, P>, F>
+impl<F: PrimeField, P: MiMCParameters> TwoToOneCRHSchemeGadget<MiMCNonFeistelCRH<F, P>, F>
     for MiMCNonFeistelCRHGadget<F, P>
 {
+    type InputVar = FpVar<F>;
+
     type OutputVar = FpVar<F>;
 
     type ParametersVar = MiMCVar<F, P>;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
-        left_input: &[ark_r1cs_std::uint8::UInt8<F>],
-        right_input: &[ark_r1cs_std::uint8::UInt8<F>],
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
     ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
-        assert_eq!(left_input.len(), right_input.len());
-        let chained: Vec<_> = left_input
-            .iter()
-            .chain(right_input.iter())
-            .cloned()
-            .collect();
+        Ok(parameters
+            .permute_non_feistel(&[left_input, right_input])
+            .into_iter()
+            .next()
+            .unwrap())
+    }
 
-        <Self as CRHGadget<_, _>>::evaluate(parameters, &chained)
+    fn compress(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
+    ) -> Result<Self::OutputVar, ark_relations::r1cs::SynthesisError> {
+        <Self as TwoToOneCRHSchemeGadget<_, _>>::evaluate(parameters, left_input, right_input)
     }
 }
