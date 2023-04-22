@@ -26,23 +26,23 @@ where
 
 #[cfg(test)]
 mod tests {
+    #![allow(unused_imports)]
+
     use std::{error::Error, str::FromStr};
 
     use ark_bn254::Fr;
     use ark_crypto_primitives::crh::TwoToOneCRH;
     use ark_ff::{to_bytes, One, Zero};
 
-    use crate::{
-        params::{
-            mimc_5_220_bn254::{MIMC_5_220_BN254_PARAMS, MIMC_5_220_BN254_ROUND_KEYS},
-            mimc_7_91_bn254::{MIMC_7_91_BN254_PARAMS, MIMC_7_91_BN254_ROUND_KEYS},
-            round_keys_contants_to_vec,
-        },
-        MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH,
-    };
+    use crate::{params::round_keys_contants_to_vec, MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH};
 
     #[test]
+    #[cfg(feature = "mimc-5-220-bn254")]
     fn correct_hash_result_params_feistel() -> Result<(), Box<dyn Error>> {
+        use crate::params::mimc_5_220_bn254::{
+            MIMC_5_220_BN254_PARAMS, MIMC_5_220_BN254_ROUND_KEYS,
+        };
+
         let param = MiMC::<Fr, MIMC_5_220_BN254_PARAMS>::new(
             1,
             Fr::zero(),
@@ -67,7 +67,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "mimc-7-91-bn254")]
     fn correct_hash_result_params_non_feistel() -> Result<(), Box<dyn Error>> {
+        use crate::params::mimc_7_91_bn254::{MIMC_7_91_BN254_PARAMS, MIMC_7_91_BN254_ROUND_KEYS};
+
         let param = MiMC::<Fr, MIMC_7_91_BN254_PARAMS>::new(
             1,
             Fr::zero(),
