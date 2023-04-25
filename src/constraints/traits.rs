@@ -5,6 +5,7 @@ use ark_ff::PrimeField;
 use ark_r1cs_std::{
     fields::fp::FpVar,
     prelude::{AllocVar, EqGadget},
+    R1CSVar,
 };
 
 use crate::{
@@ -39,6 +40,23 @@ impl<F: PrimeField, P: MiMCParameters> AllocVar<MiMC<F, P>, F> for MiMCVar<F, P>
                 .into_iter()
                 .map(|e| -> Result<_, _> { FpVar::new_variable(cs.clone(), || Ok(e), mode) })
                 .collect::<Result<Vec<_>, _>>()?,
+        })
+    }
+}
+
+impl<F: PrimeField, P: MiMCParameters> R1CSVar<F> for MiMCVar<F, P> {
+    type Value = MiMC<F, P>;
+
+    fn cs(&self) -> ark_relations::r1cs::ConstraintSystemRef<F> {
+        self.k.cs()
+    }
+
+    fn value(&self) -> Result<Self::Value, ark_relations::r1cs::SynthesisError> {
+        Ok(MiMC {
+            num_outputs: self.num_outputs,
+            k: self.k.value()?,
+            round_keys: self.round_keys.value()?,
+            params: PhantomData,
         })
     }
 }

@@ -11,6 +11,28 @@ pub struct MiMCFeistelCRH<F: PrimeField, P: MiMCParameters>(PhantomData<F>, Phan
 #[derive(Debug, Default, Clone, Copy)]
 pub struct MiMCNonFeistelCRH<F: PrimeField, P: MiMCParameters>(PhantomData<F>, PhantomData<P>);
 
+impl<F: PrimeField, P: MiMCParameters> Eq for MiMC<F, P> {}
+
+impl<F: PrimeField, P: MiMCParameters> PartialEq for MiMC<F, P> {
+    fn eq(&self, other: &Self) -> bool {
+        self.num_outputs == other.num_outputs
+            && self.k == other.k
+            && self.round_keys == other.round_keys
+            && self.params == other.params
+    }
+}
+
+impl<F: PrimeField, P: MiMCParameters> std::fmt::Debug for MiMC<F, P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MiMC")
+            .field("num_outputs", &self.num_outputs)
+            .field("k", &self.k)
+            .field("round_keys", &self.round_keys)
+            .field("params", &self.params)
+            .finish()
+    }
+}
+
 impl<F: PrimeField, P: MiMCParameters> CRH for MiMCFeistelCRH<F, P> {
     const INPUT_SIZE_BITS: usize = <F::Params as FpParameters>::CAPACITY as usize;
 
