@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 use ark_crypto_primitives::{crh::TwoToOneCRHGadget, CRHGadget};
 use ark_ff::PrimeField;
-use ark_r1cs_std::{fields::fp::FpVar, prelude::AllocVar};
+use ark_r1cs_std::{
+    fields::fp::FpVar,
+    prelude::{AllocVar, EqGadget},
+};
 
 use crate::{
     utils::to_field_elements_r1cs, MiMC, MiMCFeistelCRH, MiMCNonFeistelCRH, MiMCParameters,
@@ -37,6 +40,17 @@ impl<F: PrimeField, P: MiMCParameters> AllocVar<MiMC<F, P>, F> for MiMCVar<F, P>
                 .map(|e| -> Result<_, _> { FpVar::new_variable(cs.clone(), || Ok(e), mode) })
                 .collect::<Result<Vec<_>, _>>()?,
         })
+    }
+}
+
+impl<F: PrimeField, P: MiMCParameters> EqGadget<F> for MiMCVar<F, P> {
+    fn is_eq(
+        &self,
+        other: &Self,
+    ) -> Result<ark_r1cs_std::prelude::Boolean<F>, ark_relations::r1cs::SynthesisError> {
+        self.k
+            .is_eq(&other.k)?
+            .and(&self.round_keys.is_eq(&other.round_keys)?)
     }
 }
 
