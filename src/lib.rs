@@ -18,7 +18,7 @@ pub trait MiMCParameters: Clone + Default {
     const EXPONENT: usize;
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct MiMC<F: PrimeField, P: MiMCParameters> {
     pub num_outputs: usize,
     pub k: F,
