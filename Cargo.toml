@@ -1,6 +1,6 @@
 [package]
 name = "arkworks-mimc"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 repository = "https://github.com/Tetration-Lab/arkworks-mimc"
 description = "Arkworks implementation of cryptographic hash function MiMC"
